@@ -127,7 +127,7 @@ void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
         // and slide the outspace over, padding with zeroes
         // TODO: memmove
         for (int i = 0; i < fftlen; i++) {
-            if ( i+stepsize > fftlen ) {
+            if ( i+stepsize >= fftlen ) {
                 outspace[i] = 0;
             } else {
                 outspace[i] = outspace[i+stepsize];
