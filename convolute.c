@@ -28,6 +28,12 @@ void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
     while ( fftlen > 2 ) { pow++; fftlen /= 2; }
     fftlen = 2 << pow;
 
+    // make sure we're not wasting a bunch of memory on large chunk sizes
+    // if the overlap will be wasted
+    if ( fftlen > s_in->length + s_ir->length + 10 ) {
+        fftlen = s_in->length + s_ir->length + 10;
+    }
+
     int stepsize = fftlen - s_ir->length - 10;
     int steps = (s_in->length + stepsize - 1) / stepsize;
 
