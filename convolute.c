@@ -128,7 +128,12 @@ void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
         }
 
         // write out the part we're done with
-        sf_write_double(s_out, outspace, stepsize);
+        if ( st < steps-1 ) {
+            sf_write_double(s_out, outspace, stepsize);
+        } else {
+            // write out the last step - it's smaller than the rest
+            sf_write_double(s_out, outspace, s_in->length - stepsize*(steps-1) + s_ir->length);
+        }
         
         // and slide the outspace over, padding with zeroes
         // TODO: memmove
@@ -161,9 +166,6 @@ void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
         fprintf(stderr, "Recommend a multipler of less than %f instead\n", amp/maxval);
     }
     fprintf(stderr, "maximum amplitude: %f\n", maxval);
-
-    // write out the last little bit
-    sf_write_double(s_out, outspace, fftlen);
 
     // close out the file
     sf_close(s_out);
