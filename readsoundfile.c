@@ -22,7 +22,9 @@ soundfile * readsoundfile(char *path) {
     if ( (ret->data = malloc(sizeof(double)*info.frames)) == NULL )
         die("Couldn't malloc space for sound buffer");
 
+#ifdef SPEW
     fprintf(stderr, "Reading %d samples from %s...\n", (int)info.frames, path);
+#endif
     sf_read_double(snd, ret->data, info.frames); // assumption: channel count is 1, verified above
 
     ret->length = info.frames;

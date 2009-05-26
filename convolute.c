@@ -37,7 +37,9 @@ void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
     int stepsize = fftlen - s_ir->length - 10;
     int steps = (s_in->length + stepsize - 1) / stepsize;
 
+#ifdef SPEW
     fprintf(stderr, "fftlen is %d\ndoing %d steps of size %d\n", fftlen, steps, stepsize);
+#endif
 
     fftw_plan p_fw, p_bw;
     fftw_complex *f_in, *f_out, *f_ir;
@@ -164,8 +166,13 @@ void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
     if ( totalclipped ) {
         fprintf(stderr, "WARNING: %d samples got clipped!\n", totalclipped);
         fprintf(stderr, "Recommend a multipler of less than %f instead\n", amp/maxval);
+#ifndef SPEW
+        fprintf(stderr, "maximum amplitude: %f\n", maxval);
+#endif
     }
+#ifdef SPEW
     fprintf(stderr, "maximum amplitude: %f\n", maxval);
+#endif
 
     // close out the file
     sf_close(s_out);
