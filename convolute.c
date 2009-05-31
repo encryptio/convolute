@@ -14,12 +14,23 @@
 #include "readsoundfile.h"
 
 void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
-    // read the input files
-    soundfile * s_in = readsoundfile(inputpath);
+    // read the impulse response
     soundfile * s_ir = readsoundfile(irpath);
 
+    // open the input path for reading
+    SF_INFO snd_in_info;
+    SNDFILE *snd_in;
+
+    if ( (snd_in = sf_open(inputpath, SFM_READ, &snd_in_info)) == NULL )
+        die("Couldn't open a sound file for reading");
+
+    if ( snd_in_info.channels != 1 )
+        die("A sound file has more than one channel");
+
+    int snd_in_len = snd_in_info.frames;
+
     // make sure all is well
-    if ( s_in->samplerate != s_ir->samplerate )
+    if ( snd_in_info.samplerate != s_ir->samplerate )
         die("Sample rates of input and impulse response are different.");
 
     int fftlen = s_ir->length * 1.5 + 10000;
@@ -30,12 +41,12 @@ void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
 
     // make sure we're not wasting a bunch of memory on large chunk sizes
     // if the overlap will be wasted
-    if ( fftlen > s_in->length + s_ir->length + 10 ) {
-        fftlen = s_in->length + s_ir->length + 10;
+    if ( fftlen > snd_in_len + s_ir->length + 10 ) {
+        fftlen = snd_in_len + s_ir->length + 10;
     }
 
     int stepsize = fftlen - s_ir->length - 10;
-    int steps = (s_in->length + stepsize - 1) / stepsize;
+    int steps = (snd_in_len + stepsize - 1) / stepsize;
 
 #ifdef SPEW
     fprintf(stderr, "fftlen is %d\ndoing %d steps of size %d\n", fftlen, steps, stepsize);
@@ -44,6 +55,7 @@ void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
     fftw_plan p_fw, p_bw;
     fftw_complex *f_in, *f_out, *f_ir;
     double *outspace;
+    double *inspace;
 
     // get some space for our temporary arrays
     if ( (f_in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * fftlen)) == NULL )
@@ -54,6 +66,8 @@ void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
         die("Couldn't malloc space for output fft");
     if ( (outspace = malloc(sizeof(double) * fftlen)) == NULL )
         die("Couldn't malloc space for outspace");
+    if ( (inspace = malloc(sizeof(double) * stepsize)) == NULL )
+        die("Couldn't malloc space for inspace");
 
     // plan forward and plan backward
     p_fw = fftw_plan_dft_1d(fftlen, f_in, f_out, FFTW_FORWARD,  FFTW_ESTIMATE);
@@ -63,7 +77,7 @@ void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
     SNDFILE *s_out;
     SF_INFO outinfo;
 
-    outinfo.samplerate = s_in->samplerate;
+    outinfo.samplerate = snd_in_info.samplerate;
     outinfo.channels   = 1;
     outinfo.format     = SF_FORMAT_WAV | SF_FORMAT_PCM_24 | SF_ENDIAN_FILE;
 
@@ -89,10 +103,16 @@ void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
         fprintf(stderr, "convoluting... %d/%d\r", st, steps);
         int start = st*stepsize;
 
-        // first, copy the input into f_in
+        // read some amount from the input file
+        int readlength = stepsize;
+        if ( start + readlength > snd_in_len )
+            readlength = snd_in_len - start;
+        sf_read_double(snd_in, inspace, readlength);
+
+        // copy the input into f_in
         for (int i = 0; i < fftlen; i++) {
-            if ( i < stepsize && start+i < s_in->length ) {
-                f_in[i][0] = s_in->data[start+i];
+            if ( i < stepsize && start+i < snd_in_len ) {
+                f_in[i][0] = inspace[i];
             } else {
                 f_in[i][0] = 0;
             }
@@ -134,7 +154,7 @@ void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
             sf_write_double(s_out, outspace, stepsize);
         } else {
             // write out the last step - it's smaller than the rest
-            sf_write_double(s_out, outspace, s_in->length - stepsize*(steps-1) + s_ir->length);
+            sf_write_double(s_out, outspace, snd_in_len - stepsize*(steps-1) + s_ir->length);
         }
         
         // and slide the outspace over, padding with zeroes
@@ -174,21 +194,20 @@ void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
     fprintf(stderr, "maximum amplitude: %f\n", maxval);
 #endif
 
-    // close out the file
+    // clean up
     sf_close(s_out);
 
-    // clean up
     fftw_destroy_plan(p_fw);
     fftw_destroy_plan(p_bw);
     fftw_free(f_in);
     fftw_free(f_out);
 
-    free(s_in->data);
-    free(s_in);
+    sf_close(snd_in);
 
     free(s_ir->data);
     free(s_ir);
 
     free(outspace);
+    free(inspace);
 }
 
