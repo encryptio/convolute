@@ -10,6 +10,7 @@ typedef struct {
 } soundfile;
 
 soundfile * readsoundfile(char *path);
+int getsoundfilelength(char *path);
 
 #endif
 

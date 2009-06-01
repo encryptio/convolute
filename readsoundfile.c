@@ -36,3 +36,21 @@ soundfile * readsoundfile(char *path) {
     return ret;
 }
 
+int getsoundfilelength(char *path) {
+    SF_INFO info;
+    SNDFILE *snd;
+
+    if ( (snd = sf_open(path, SFM_READ, &info)) == NULL )
+        die("Couldn't open a sound file for reading");
+
+    if ( info.channels != 1 )
+        die("A sound file has more than one channel");
+
+    int ret = info.frames;
+
+    if ( sf_close(snd) )
+        die("Couldn't close read file");
+
+    return ret;
+}
+
