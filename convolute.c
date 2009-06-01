@@ -299,6 +299,13 @@ void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
     int irlen = getsoundfilelength(irpath);
     int inlen = getsoundfilelength(inputpath);
 
+    if ( irlen > inlen ) {
+#ifdef SPEW
+        fprintf(stderr, "swapping ir and in\n");
+#endif
+        return convolute(irpath, inputpath, outputpath, amp);
+    }
+
     int insr = getsoundfilesamplerate(inputpath);
 
     writezerofile(outputpath, irlen+inlen, insr);
