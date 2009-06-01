@@ -15,7 +15,7 @@
 #include "readsoundfile.h"
 
 // this number directly corresponds to the memory usage and inversely corresponds to running time and number of passes
-#define IMPULSE_CHUNK_MAXLEN 409600
+#define IMPULSE_CHUNK_MAXLEN 1638400
 
 #define TEMPORARY_SUFFIX ".convolute-temp"
 
