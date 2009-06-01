@@ -10,6 +10,8 @@ typedef struct {
 } soundfile;
 
 soundfile * readsoundfile(char *path);
+soundfile * readsoundfilechunk(char *path, int start, int len);
+int getsoundfilesamplerate(char *path);
 int getsoundfilelength(char *path);
 
 #endif
