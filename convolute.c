@@ -265,8 +265,13 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
     fftw_destroy_plan(p_bw);
     fftw_free(f_in);
     fftw_free(f_out);
+    fftw_free(f_ir);
+
+    free(ir->data);
+    free(ir);
 
     sf_close(snd_in);
+    sf_close(s_add);
 
     free(outspace);
     free(inspace);
