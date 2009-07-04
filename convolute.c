@@ -147,7 +147,7 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
     int totalclipped = 0;
     double maxval = 0;
     for (int st = 0; st < steps; st++) {
-        fprintf(stderr, "convoluting... %d/%d\033[K\r", st, steps);
+        fprintf(stderr, "convoluting... %d/%d\033[K\r", st+1, steps);
         int start = st*stepsize;
 
         // read some amount from the input file
@@ -302,7 +302,7 @@ void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
     int irat = 0;
     while ( irat < irlen ) {
         if ( passes > 1 )
-            fprintf(stderr, "pass %d/%d\033[K\n", i, passes);
+            fprintf(stderr, "pass %d/%d\033[K\n", i+1, passes);
 
         addconvolute(inputpath, irpath, i == 0 ? NULL : outputpath, newpath, amp, irat);
         irat += IMPULSE_CHUNK_MAXLEN;
