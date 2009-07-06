@@ -24,6 +24,8 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
     SF_INFO snd_in_info;
     SNDFILE *snd_in;
 
+    memset(&snd_in_info, 0, sizeof(snd_in_info));
+
     if ( (snd_in = sf_open(inputpath, SFM_READ, &snd_in_info)) == NULL )
         die("Couldn't open a sound file for reading");
 
@@ -82,6 +84,8 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
     SNDFILE *s_add = NULL;
     SF_INFO addinfo;
 
+    memset(&addinfo, 0, sizeof(addinfo));
+
     if ( addpath ) {
         if ( (s_add = sf_open(addpath, SFM_READ, &addinfo)) == NULL )
             die("Couldn't open additive file for reading");
@@ -90,6 +94,8 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
     // set up the output file
     SNDFILE *s_out;
     SF_INFO outinfo;
+
+    memset(&outinfo, 0, sizeof(outinfo));
 
     outinfo.samplerate = snd_in_info.samplerate;
     outinfo.channels   = 1;

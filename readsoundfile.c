@@ -5,10 +5,14 @@
 
 #include <sndfile.h>
 
+#include <string.h>
+
 soundfile * readsoundfile(char *path) {
     soundfile * ret;
     SF_INFO info;
     SNDFILE *snd;
+
+    memset(&info, 0, sizeof(info));
 
     if ( (snd = sf_open(path, SFM_READ, &info)) == NULL )
         diem("Couldn't open sound file for reading", path);
@@ -38,6 +42,8 @@ soundfile * readsoundfilechunk(char *path, int start, int len) {
     SF_INFO info;
     SNDFILE *snd;
 
+    memset(&info, 0, sizeof(info));
+
     if ( (snd = sf_open(path, SFM_READ, &info)) == NULL )
         diem("Couldn't open sound file for reading", path);
 
@@ -66,6 +72,8 @@ int getsoundfilelength(char *path) {
     SF_INFO info;
     SNDFILE *snd;
 
+    memset(&info, 0, sizeof(info));
+
     if ( (snd = sf_open(path, SFM_READ, &info)) == NULL )
         diem("Couldn't open a sound file for reading", path);
 
@@ -83,6 +91,8 @@ int getsoundfilelength(char *path) {
 int getsoundfilesamplerate(char *path) {
     SF_INFO info;
     SNDFILE *snd;
+
+    memset(&info, 0, sizeof(info));
 
     if ( (snd = sf_open(path, SFM_READ, &info)) == NULL )
         diem("Couldn't open a sound file for reading", path);
