@@ -11,10 +11,10 @@ soundfile * readsoundfile(char *path) {
     SNDFILE *snd;
 
     if ( (snd = sf_open(path, SFM_READ, &info)) == NULL )
-        die("Couldn't open a sound file for reading");
+        diem("Couldn't open sound file for reading", path);
 
     if ( info.channels != 1 )
-        die("A sound file has more than one channel");
+        diem("Sound file has more than one channel", path);
 
     if ( (ret = malloc(sizeof(*ret))) == NULL )
         die("Couldn't malloc space for soundfile");
@@ -28,7 +28,7 @@ soundfile * readsoundfile(char *path) {
     ret->samplerate = info.samplerate;
 
     if ( sf_close(snd) )
-        die("Couldn't close played file");
+        diem("Couldn't close sound file", path);
 
     return ret;
 }
@@ -39,10 +39,10 @@ soundfile * readsoundfilechunk(char *path, int start, int len) {
     SNDFILE *snd;
 
     if ( (snd = sf_open(path, SFM_READ, &info)) == NULL )
-        die("Couldn't open a sound file for reading");
+        diem("Couldn't open sound file for reading", path);
 
     if ( info.channels != 1 )
-        die("A sound file has more than one channel");
+        diem("Sound file has more than one channel", path);
 
     if ( (ret = malloc(sizeof(*ret))) == NULL )
         die("Couldn't malloc space for soundfile");
@@ -57,7 +57,7 @@ soundfile * readsoundfilechunk(char *path, int start, int len) {
     ret->samplerate = info.samplerate;
 
     if ( sf_close(snd) )
-        die("Couldn't close played file");
+        diem("Couldn't close sound file", path);
 
     return ret;
 }
@@ -67,15 +67,15 @@ int getsoundfilelength(char *path) {
     SNDFILE *snd;
 
     if ( (snd = sf_open(path, SFM_READ, &info)) == NULL )
-        die("Couldn't open a sound file for reading");
+        diem("Couldn't open a sound file for reading", path);
 
     if ( info.channels != 1 )
-        die("A sound file has more than one channel");
+        diem("A sound file has more than one channel", path);
 
     int ret = info.frames;
 
     if ( sf_close(snd) )
-        die("Couldn't close read file");
+        diem("Couldn't close sound file", path);
 
     return ret;
 }
@@ -85,12 +85,12 @@ int getsoundfilesamplerate(char *path) {
     SNDFILE *snd;
 
     if ( (snd = sf_open(path, SFM_READ, &info)) == NULL )
-        die("Couldn't open a sound file for reading");
+        diem("Couldn't open a sound file for reading", path);
 
     int ret = info.samplerate;
 
     if ( sf_close(snd) )
-        die("Couldn't close read file");
+        diem("Couldn't close sound file", path);
 
     return ret;
 }
