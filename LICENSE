@@ -1,0 +1,10 @@
+convolute-specific code is released under the ISC license, as included
+in COPYING.ISC.
+
+convolute also includes code from kiss_fft, released under a BSD-like
+license, included in kissfft/COPYING.
+
+However, if you choose to enable linking with fftw3 by compiling with
+USE_FFTW3=1, the convolute code is then subject to the GPL version 2
+(or, at your option, any later version.)
+

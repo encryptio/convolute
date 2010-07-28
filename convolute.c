@@ -1,19 +1,17 @@
 /*
- * Copyright (C) 2009 Jack Christopher Kastorff <encryptio@gmail.com>
+ * Copyright (c) 2009-2010 Jack Christopher Kastorff <encryptio@gmail.com>
  * 
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
  * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
 #include <stdlib.h>
@@ -22,8 +20,13 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef USE_FFTW3
 //#include <complex.h>
 #include <fftw3.h>
+#else
+#include "kissfft/kiss_fftr.h"
+#endif
+
 #include <sndfile.h>
 
 #include "die.h"
@@ -75,26 +78,48 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
     fprintf(stderr, "fftlen is %d\ndoing %d steps of size %d\n", fftlen, steps, stepsize);
 #endif
 
+#ifdef USE_FFTW3
     fftw_plan p_fw, p_bw;
     fftw_complex *f_in, *f_out, *f_ir;
+#else
+    kiss_fftr_cfg cfg_fw, cfg_bw;
+    kiss_fft_cpx *f_out, *f_ir;
+    double *revspace;
+#endif
     double *outspace;
     double *inspace;
 
     // get some space for our temporary arrays
+#ifdef USE_FFTW3
     if ( (f_in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * fftlen)) == NULL )
         die("Couldn't malloc space for input fft");
     if ( (f_out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * fftlen)) == NULL )
         die("Couldn't malloc space for output fft");
     if ( (f_ir = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * fftlen)) == NULL )
         die("Couldn't malloc space for output fft");
+#else
+    if ( (f_out = KISS_FFT_MALLOC(sizeof(kiss_fft_cpx) * fftlen)) == NULL )
+        die("Couldn't malloc space for output fft");
+    if ( (f_ir = KISS_FFT_MALLOC(sizeof(kiss_fft_cpx) * fftlen)) == NULL )
+        die("Couldn't malloc space for output fft");
+    if ( (revspace = KISS_FFT_MALLOC(sizeof(double) * fftlen)) == NULL )
+        die("Couldn't malloc space for output scalars");
+#endif
+
     if ( (outspace = malloc(sizeof(double) * fftlen)) == NULL )
         die("Couldn't malloc space for outspace");
-    if ( (inspace = malloc(sizeof(double) * stepsize)) == NULL )
+    if ( (inspace = malloc(sizeof(double) * fftlen)) == NULL )
         die("Couldn't malloc space for inspace");
 
     // plan forward and plan backward
+#ifdef USE_FFTW3
     p_fw = fftw_plan_dft_1d(fftlen, f_in, f_out, FFTW_FORWARD,  FFTW_ESTIMATE);
     p_bw = fftw_plan_dft_1d(fftlen, f_in, f_out, FFTW_BACKWARD, FFTW_ESTIMATE);
+#else
+    cfg_fw = kiss_fftr_alloc(fftlen, 0, NULL, NULL);
+    cfg_bw = kiss_fftr_alloc(fftlen, 1, NULL, NULL);
+#endif
+
 
     // set up the input add file
     SNDFILE *s_add = NULL;
@@ -150,12 +175,16 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
     }
 
     // take the fft of the impulse response
+#ifdef USE_FFTW3
     for (int i = 0; i < ir->length; i++) {
         f_in[i][0] = ir->data[i];
         f_in[i][1] = 0;
     }
     fftw_execute(p_fw);
     memcpy(f_ir, f_out, sizeof(fftw_complex) * fftlen);
+#else
+    kiss_fftr(cfg_fw, ir->data, f_ir);
+#endif
 
     // initialize the outspace
     if ( addpath ) {
@@ -164,6 +193,10 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
         for (int i = 0; i < fftlen; i++)
             outspace[i] = 0;
     }
+
+    // initialize the inspace
+    for (int i = 0; i < fftlen; i++)
+        inspace[i] = 0;
 
     // and go!
     int totalclipped = 0;
@@ -178,6 +211,7 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
             readlength = snd_in_len - start;
         sf_read_double(snd_in, inspace, readlength);
 
+#ifdef USE_FFTW3
         // copy the input into f_in
         for (int i = 0; i < fftlen; i++) {
             if ( i < stepsize && start+i < snd_in_len ) {
@@ -203,6 +237,30 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
         // add the resulting chunk to the outspace (normalizing it as we go)
         for (int i = 0; i < fftlen; i++)
             outspace[i] += f_out[i][0]/fftlen * amp;
+#else
+        // clean up the trailing part of inspace if it's the last step
+        if ( start+fftlen > snd_in_len )
+            for (int i = readlength+1; i < fftlen; i++)
+                inspace[i] = 0;
+
+        // take the fft
+        kiss_fftr(cfg_fw, inspace, f_out);
+
+        // multiply by f_ir
+        for (int i = 0; i < fftlen; i++) {
+            double re = f_ir[i].r*f_out[i].r - f_ir[i].i*f_out[i].i;
+            double im = f_ir[i].i*f_out[i].r + f_ir[i].r*f_out[i].i;
+            f_out[i].r = re;
+            f_out[i].i = im;
+        }
+
+        // take the inverse fft
+        kiss_fftri(cfg_bw, f_out, revspace);
+
+        // add the resulting chunk to the outspace (normalizing it as we go)
+        for (int i = 0; i < fftlen; i++)
+            outspace[i] += revspace[i]/fftlen * amp;
+#endif
 
         // get some clipping statistics
         for (int i = 0; i < stepsize; i++) {
@@ -272,11 +330,19 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
     // clean up
     sf_close(s_out);
 
+#ifdef USE_FFTW3
     fftw_destroy_plan(p_fw);
     fftw_destroy_plan(p_bw);
     fftw_free(f_in);
     fftw_free(f_out);
     fftw_free(f_ir);
+#else
+    kiss_fftr_free(cfg_fw);
+    kiss_fftr_free(cfg_bw);
+    KISS_FFT_FREE(f_ir);
+    KISS_FFT_FREE(f_out);
+    KISS_FFT_FREE(revspace);
+#endif
 
     free(ir->data);
     free(ir);
