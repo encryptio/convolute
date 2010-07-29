@@ -65,6 +65,9 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
     while ( fftlen > 2 ) { pow++; fftlen /= 2; }
     fftlen = 2 << pow;
 
+    if ( fftlen < 32768 )
+        fftlen = 32768;
+
     // make sure we're not wasting a bunch of memory on large chunk sizes
     // if the overlap will be wasted
     if ( fftlen > snd_in_len + ir->length + 10 ) {
