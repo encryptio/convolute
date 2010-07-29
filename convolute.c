@@ -98,9 +98,9 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
     if ( (f_ir = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * fftlen)) == NULL )
         die("Couldn't malloc space for output fft");
 #else
-    if ( (f_out = KISS_FFT_MALLOC(sizeof(kiss_fft_cpx) * fftlen)) == NULL )
+    if ( (f_out = KISS_FFT_MALLOC(sizeof(kiss_fft_cpx) * (fftlen/2+1))) == NULL )
         die("Couldn't malloc space for output fft");
-    if ( (f_ir = KISS_FFT_MALLOC(sizeof(kiss_fft_cpx) * fftlen)) == NULL )
+    if ( (f_ir = KISS_FFT_MALLOC(sizeof(kiss_fft_cpx) * (fftlen/2+1))) == NULL )
         die("Couldn't malloc space for output fft");
     if ( (revspace = KISS_FFT_MALLOC(sizeof(double) * fftlen)) == NULL )
         die("Couldn't malloc space for output scalars");
@@ -247,7 +247,7 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
         kiss_fftr(cfg_fw, inspace, f_out);
 
         // multiply by f_ir
-        for (int i = 0; i < fftlen; i++) {
+        for (int i = 0; i < fftlen/2+1; i++) {
             double re = f_ir[i].r*f_out[i].r - f_ir[i].i*f_out[i].i;
             double im = f_ir[i].i*f_out[i].r + f_ir[i].r*f_out[i].i;
             f_out[i].r = re;
