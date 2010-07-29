@@ -38,7 +38,7 @@
 
 #define TEMPORARY_SUFFIX ".convolute-temp"
 
-static void addconvolute(char *inputpath, char *irpath, char *addpath, char *outputpath, double amp, int extradelay) {
+static void addconvolute(char *inputpath, char *irpath, char *addpath, char *outputpath, float amp, int extradelay) {
     // open the input path for reading
     SF_INFO snd_in_info;
     SNDFILE *snd_in;
@@ -79,42 +79,41 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
 #endif
 
 #ifdef USE_FFTW3
-    fftw_plan p_fw, p_bw;
-    fftw_complex *f_in, *f_out, *f_ir;
+    fftwf_plan p_fw, p_bw;
+    fftwf_complex *f_in, *f_out, *f_ir;
 #else
     kiss_fftr_cfg cfg_fw, cfg_bw;
     kiss_fft_cpx *f_out, *f_ir;
-    double *revspace;
+    float *revspace;
 #endif
-    double *outspace;
-    double *inspace;
+    float *outspace, *inspace;
 
     // get some space for our temporary arrays
 #ifdef USE_FFTW3
-    if ( (f_in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * fftlen)) == NULL )
+    if ( (f_in = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * fftlen)) == NULL )
         die("Couldn't malloc space for input fft");
-    if ( (f_out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * fftlen)) == NULL )
+    if ( (f_out = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * fftlen)) == NULL )
         die("Couldn't malloc space for output fft");
-    if ( (f_ir = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * fftlen)) == NULL )
+    if ( (f_ir = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * fftlen)) == NULL )
         die("Couldn't malloc space for output fft");
 #else
     if ( (f_out = KISS_FFT_MALLOC(sizeof(kiss_fft_cpx) * (fftlen/2+1))) == NULL )
         die("Couldn't malloc space for output fft");
     if ( (f_ir = KISS_FFT_MALLOC(sizeof(kiss_fft_cpx) * (fftlen/2+1))) == NULL )
         die("Couldn't malloc space for output fft");
-    if ( (revspace = KISS_FFT_MALLOC(sizeof(double) * fftlen)) == NULL )
+    if ( (revspace = KISS_FFT_MALLOC(sizeof(float) * fftlen)) == NULL )
         die("Couldn't malloc space for output scalars");
 #endif
 
-    if ( (outspace = malloc(sizeof(double) * fftlen)) == NULL )
+    if ( (outspace = malloc(sizeof(float) * fftlen)) == NULL )
         die("Couldn't malloc space for outspace");
-    if ( (inspace = malloc(sizeof(double) * fftlen)) == NULL )
+    if ( (inspace = malloc(sizeof(float) * fftlen)) == NULL )
         die("Couldn't malloc space for inspace");
 
     // plan forward and plan backward
 #ifdef USE_FFTW3
-    p_fw = fftw_plan_dft_1d(fftlen, f_in, f_out, FFTW_FORWARD,  FFTW_ESTIMATE);
-    p_bw = fftw_plan_dft_1d(fftlen, f_in, f_out, FFTW_BACKWARD, FFTW_ESTIMATE);
+    p_fw = fftwf_plan_dft_1d(fftlen, f_in, f_out, FFTW_FORWARD,  FFTW_ESTIMATE);
+    p_bw = fftwf_plan_dft_1d(fftlen, f_in, f_out, FFTW_BACKWARD, FFTW_ESTIMATE);
 #else
     cfg_fw = kiss_fftr_alloc(fftlen, 0, NULL, NULL);
     cfg_bw = kiss_fftr_alloc(fftlen, 1, NULL, NULL);
@@ -150,12 +149,12 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
         int tocopy = extradelay;
         while ( tocopy > 0 ) {
             if ( tocopy > fftlen ) {
-                sf_read_double(s_add, outspace, fftlen);
-                sf_write_double(s_out, outspace, fftlen);
+                sf_read_float(s_add, outspace, fftlen);
+                sf_write_float(s_out, outspace, fftlen);
                 tocopy -= fftlen;
             } else {
-                sf_read_double(s_add, outspace, tocopy);
-                sf_write_double(s_out, outspace, tocopy);
+                sf_read_float(s_add, outspace, tocopy);
+                sf_write_float(s_out, outspace, tocopy);
                 tocopy -= tocopy;
             }
         }
@@ -165,10 +164,10 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
             outspace[i] = 0;
         while ( tocopy > 0 ) {
             if ( tocopy > fftlen ) {
-                sf_write_double(s_out, outspace, fftlen);
+                sf_write_float(s_out, outspace, fftlen);
                 tocopy -= fftlen;
             } else {
-                sf_write_double(s_out, outspace, tocopy);
+                sf_write_float(s_out, outspace, tocopy);
                 tocopy -= tocopy;
             }
         }
@@ -180,15 +179,15 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
         f_in[i][0] = ir->data[i];
         f_in[i][1] = 0;
     }
-    fftw_execute(p_fw);
-    memcpy(f_ir, f_out, sizeof(fftw_complex) * fftlen);
+    fftwf_execute(p_fw);
+    memcpy(f_ir, f_out, sizeof(fftwf_complex) * fftlen);
 #else
     kiss_fftr(cfg_fw, ir->data, f_ir);
 #endif
 
     // initialize the outspace
     if ( addpath ) {
-        sf_read_double(s_add, outspace, fftlen);
+        sf_read_float(s_add, outspace, fftlen);
     } else {
         for (int i = 0; i < fftlen; i++)
             outspace[i] = 0;
@@ -200,7 +199,7 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
 
     // and go!
     int totalclipped = 0;
-    double maxval = 0;
+    float maxval = 0;
     for (int st = 0; st < steps; st++) {
         fprintf(stderr, "convoluting... %d/%d\033[K\r", st+1, steps);
         int start = st*stepsize;
@@ -209,7 +208,7 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
         int readlength = stepsize;
         if ( start + readlength > snd_in_len )
             readlength = snd_in_len - start;
-        sf_read_double(snd_in, inspace, readlength);
+        sf_read_float(snd_in, inspace, readlength);
 
 #ifdef USE_FFTW3
         // copy the input into f_in
@@ -223,7 +222,7 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
         }
 
         // take the fft
-        fftw_execute(p_fw);
+        fftwf_execute(p_fw);
 
         // multiply by f_ir and put the result in f_in
         for (int i = 0; i < fftlen; i++) {
@@ -232,7 +231,7 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
         }
 
         // take the inverse fft
-        fftw_execute(p_bw);
+        fftwf_execute(p_bw);
 
         // add the resulting chunk to the outspace (normalizing it as we go)
         for (int i = 0; i < fftlen; i++)
@@ -248,8 +247,8 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
 
         // multiply by f_ir
         for (int i = 0; i < fftlen/2+1; i++) {
-            double re = f_ir[i].r*f_out[i].r - f_ir[i].i*f_out[i].i;
-            double im = f_ir[i].i*f_out[i].r + f_ir[i].r*f_out[i].i;
+            float re = f_ir[i].r*f_out[i].r - f_ir[i].i*f_out[i].i;
+            float im = f_ir[i].i*f_out[i].r + f_ir[i].r*f_out[i].i;
             f_out[i].r = re;
             f_out[i].i = im;
         }
@@ -278,10 +277,10 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
 
         // write out the part we're done with
         if ( st < steps-1 ) {
-            sf_write_double(s_out, outspace, stepsize);
+            sf_write_float(s_out, outspace, stepsize);
         } else {
             // write out the last step - it's smaller than the rest
-            sf_write_double(s_out, outspace, snd_in_len - stepsize*(steps-1) + ir->length);
+            sf_write_float(s_out, outspace, snd_in_len - stepsize*(steps-1) + ir->length);
         }
         
         // and slide the outspace over
@@ -294,7 +293,7 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
         // append with zeroes if we're already past the end of the add file
         int got = 0;
         if ( addpath )
-            got = sf_read_double(s_add, &outspace[fftlen-stepsize], stepsize);
+            got = sf_read_float(s_add, &outspace[fftlen-stepsize], stepsize);
         for (int i = fftlen-stepsize+got; i<fftlen; i++)
             outspace[i] = 0;
     }
@@ -331,11 +330,11 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
     sf_close(s_out);
 
 #ifdef USE_FFTW3
-    fftw_destroy_plan(p_fw);
-    fftw_destroy_plan(p_bw);
-    fftw_free(f_in);
-    fftw_free(f_out);
-    fftw_free(f_ir);
+    fftwf_destroy_plan(p_fw);
+    fftwf_destroy_plan(p_bw);
+    fftwf_free(f_in);
+    fftwf_free(f_out);
+    fftwf_free(f_ir);
 #else
     kiss_fftr_free(cfg_fw);
     kiss_fftr_free(cfg_bw);
@@ -362,7 +361,7 @@ void killfile(char *path) {
     }
 }
 
-void convolute(char *inputpath, char *irpath, char *outputpath, double amp) {
+void convolute(char *inputpath, char *irpath, char *outputpath, float amp) {
     char *newpath;
 
     if ( (newpath = malloc(strlen(outputpath)+strlen(TEMPORARY_SUFFIX))) == NULL )

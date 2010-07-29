@@ -37,10 +37,10 @@ soundfile * readsoundfile(char *path) {
     if ( (ret = malloc(sizeof(*ret))) == NULL )
         die("Couldn't malloc space for soundfile");
 
-    if ( (ret->data = malloc(sizeof(double)*info.frames)) == NULL )
+    if ( (ret->data = malloc(sizeof(float)*info.frames)) == NULL )
         die("Couldn't malloc space for sound buffer");
 
-    sf_read_double(snd, ret->data, info.frames); // assumption: channel count is 1, verified above
+    sf_read_float(snd, ret->data, info.frames); // assumption: channel count is 1, verified above
 
     ret->length = info.frames;
     ret->samplerate = info.samplerate;
@@ -67,11 +67,11 @@ soundfile * readsoundfilechunk(char *path, int start, int len) {
     if ( (ret = malloc(sizeof(*ret))) == NULL )
         die("Couldn't malloc space for soundfile");
 
-    if ( (ret->data = malloc(sizeof(double)*len)) == NULL )
+    if ( (ret->data = malloc(sizeof(float)*len)) == NULL )
         die("Couldn't malloc space for sound buffer");
 
     sf_seek(snd, start, SEEK_SET);
-    int actuallen = sf_read_double(snd, ret->data, len); // assumption: channel count is 1, verified above
+    int actuallen = sf_read_float(snd, ret->data, len); // assumption: channel count is 1, verified above
 
     ret->length = actuallen;
     ret->samplerate = info.samplerate;

@@ -18,7 +18,7 @@
 #define __READSOUNDFILE_H__
 
 typedef struct {
-    double *data;
+    float *data;
     int length;
     int samplerate;
 } soundfile;

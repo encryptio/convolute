@@ -17,7 +17,7 @@
 #ifndef __CONVOLUTE_H__
 #define __CONVOLUTE_H__
 
-void convolute(char *inputpath, char *irpath, char *outputpath, double amp);
+void convolute(char *inputpath, char *irpath, char *outputpath, float amp);
 
 #endif
 

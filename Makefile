@@ -7,11 +7,11 @@ LIBS += `pkg-config --libs sndfile`
 OBJECTS = convolute.o main.o readsoundfile.o
 
 ifdef USE_FFTW3
-CFLAGS += -DUSE_FFTW3 `pkg-config --cflags fftw3`
-LIBS += `pkg-config --libs fftw3`
+CFLAGS += -DUSE_FFTW3 `pkg-config --cflags fftw3f`
+LIBS += `pkg-config --libs fftw3f`
 else
 OBJECTS += kissfft/kiss_fft.o kissfft/kiss_fftr.o
-CFLAGS += -Dkiss_fft_scalar=double
+CFLAGS += -Dkiss_fft_scalar=float
 endif
 
 .SUFFIXES: .c .o
