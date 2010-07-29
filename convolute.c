@@ -243,7 +243,7 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
 
         // add the resulting chunk to the outspace (normalizing it as we go)
         for (int i = 0; i < fftlen; i++)
-            outspace[i] += f_out[i][0]/fftlen * amp;
+            outspace[i] += revspace[i]/fftlen * amp;
 
         // get some clipping statistics
         for (int i = 0; i < stepsize; i++) {
