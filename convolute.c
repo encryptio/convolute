@@ -19,6 +19,7 @@
 #include <math.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #ifdef USE_FFTW3
 //#include <complex.h>
@@ -60,10 +61,12 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
         die("Sample rates of input and impulse response are different.");
 
     int fftlen = ir->length * 1.5 + 10000;
-    // round up to a power of two
-    int pow = 1;
-    while ( fftlen > 2 ) { pow++; fftlen /= 2; }
-    fftlen = 2 << pow;
+    {
+        // round up to a power of two
+        int pow = 1;
+        while ( fftlen > 2 ) { pow++; fftlen /= 2; }
+        fftlen = 2 << pow;
+    }
 
     if ( fftlen < 32768 )
         fftlen = 32768;
@@ -72,6 +75,38 @@ static void addconvolute(char *inputpath, char *irpath, char *addpath, char *out
     // if the overlap will be wasted
     if ( fftlen > snd_in_len + ir->length + 10 ) {
         fftlen = snd_in_len + ir->length + 10;
+        // if fftlen is odd before this, kissfft will fail completely. this is fixed implicitly below.
+
+        // here, we need to create a number whose factorization is simple (only using factors of 2,3,4,5)
+        // but bounds fftlen as tightly as possible.
+        // this gives SIGNIFICANT performance increases when using kissfft, and a small boost when using fftw.
+
+#define TRYFACTOR(n) if ( failed && current*n > fftlen ) { current *= n; failed = false; }
+        int current = 1;
+        while ( current < fftlen ) {
+            bool failed = true;
+            TRYFACTOR(2)
+            TRYFACTOR(3)
+            TRYFACTOR(5)
+            TRYFACTOR(6) // 2*3
+            TRYFACTOR(9) // 3*3
+            TRYFACTOR(10) // 2*5
+            TRYFACTOR(12) // 2*2*3
+            TRYFACTOR(15) // 3*5
+            TRYFACTOR(18) // 2*3*3
+            TRYFACTOR(20) // 2*2*5
+            TRYFACTOR(25) // 5*5
+            TRYFACTOR(30) // 2*3*5
+            TRYFACTOR(36) // 2*2*3*3
+            TRYFACTOR(45) // 3*3*5
+            TRYFACTOR(75) // 3*5*5
+            if ( failed ) {
+                // can't bound it with an optimized factor yet, add a power of 4
+                current *= 4;
+            }
+        }
+#undef TRYFACTOR
+        fftlen = current;
     }
 
     int stepsize = fftlen - ir->length - 10;
