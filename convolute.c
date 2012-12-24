@@ -419,5 +419,7 @@ void convolute(char *inputpath, char *irpath, char *outputpath, float amp) {
 
         i++;
     }
+
+    free(newpath);
 }
 
